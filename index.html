@@ -82,6 +82,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--f-body); fon
 * { box-sizing: border-box; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
+button > * { pointer-events: none; } /* taps on an icon or label always land on the button itself */
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 svg { display: block; }
 
@@ -688,7 +689,7 @@ body.present.ui-off { cursor: none; }
   function clockHTML(str) {
     return str.split('').map(ch => ch === ':' ? '<span class="c">:</span>' : `<span class="d">${ch}</span>`).join('');
   }
-  let mapKey = '';
+  let mapKey = '', lastPlayLbl = '';
   function renderMap() {
     const key = S.skin + schedule.map(s => s.type[0] + s.dur).join(',');
     const map = $('map');
@@ -760,10 +761,13 @@ body.present.ui-off { cursor: none; }
     $('leftAll').textContent = fmt(left);
     $('overall').textContent = `${N} stations · ${fmt(p.stationSec * 1000)} work · ${fmt(p.moveSec * 1000)} rotate`;
 
-    const playHTML = status === 'running'
-      ? ICON.pause + '<span class="lbl">Pause</span>'
-      : ICON.play + `<span class="lbl">${status === 'paused' ? 'Resume' : status === 'done' ? 'Run again' : 'Start'}</span>`;
-    if ($('playBtn').innerHTML !== playHTML) $('playBtn').innerHTML = playHTML;
+    // Compare against the last label, not innerHTML: the browser reserializes the SVG, so innerHTML never matches
+    // and the button contents were rebuilt every tick, swallowing taps that landed on the icon or label.
+    const playLbl = status === 'running' ? 'Pause' : status === 'paused' ? 'Resume' : status === 'done' ? 'Run again' : 'Start';
+    if (playLbl !== lastPlayLbl) {
+      $('playBtn').innerHTML = (status === 'running' ? ICON.pause : ICON.play) + `<span class="lbl">${playLbl}</span>`;
+      lastPlayLbl = playLbl;
+    }
 
     document.title = status === 'running' ? `${str} ${phase === 'move' ? 'Rotate' : 'Work'} · ${skin.title}` : skin.title;
     renderMap();
