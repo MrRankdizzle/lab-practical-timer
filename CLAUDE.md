@@ -16,4 +16,4 @@
   `CACHE` name in `sw.js` (e.g. `lab-practical-timer-v2` -> `-v3`) so installed copies update.
 
 ## Git workflow
-- Commit with a clear message and push to `main` when I approve a change.
+- When a change is finished, commit it with a clear message and push to `main` without asking.
