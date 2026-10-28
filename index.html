@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Station rotation timer for lab practicals: Work Time and Rotate to Next Station, with Classic, Histology and Fetal Pig themes.">
+<meta name="theme-color" content="#1f6aa5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Practical Timer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; font: 14px system-ui, -apple-system, "Segoe UI", sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>Lab Practical Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:ital,wght@0,400;0,500;0,600;1,500&display=swap">
+<style>
+/* Layout: one projection screen. Slim top bar, full-bleed phase stage whose clock auto-sizes to fill it, rotation map strip, control row. Present mode hides everything but the stage. */
+:root {
+  --bg: #eef4f8;
+  --surface: #ffffff;
+  --ink: #0f2433;
+  --muted: #587184;
+  --line: #d3e0ea;
+  --accent-soft: #d6eaf8;
+  --good: #1f8a4c;
+  --caution: #b26a00;
+  --shadow: 0 10px 30px rgba(15,36,51,.16);
+
+  /* skin tokens (Classic) — stage colors are deliberate and identical in light and dark */
+  --accent: #2a76b3;
+  --work-bg: #1f6aa5; --work-ink: #ffffff; --work-dim: rgba(255,255,255,.74);
+  --move-bg: #f2a83b; --move-ink: #2b1800; --move-dim: rgba(43,24,0,.72);
+  --ready-bg: #a7d3f0; --ready-ink: #0f2433; --ready-dim: rgba(15,36,51,.7);
+  --clock-work: #ffffff;
+  --warn: #ffd54a;
+
+  --f-display: "Big Shoulders Display", "Oswald", "Arial Narrow", Impact, sans-serif;
+  --f-ui: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1620; --surface: #122230; --ink: #e5eff6; --muted: #8ea7b9; --line: #23394b;
+    --accent-soft: #173a55; --good: #4cc27f; --caution: #f0b04a;
+    --shadow: 0 10px 30px rgba(0,0,0,.45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1620; --surface: #122230; --ink: #e5eff6; --muted: #8ea7b9; --line: #23394b;
+  --accent-soft: #173a55; --good: #4cc27f; --caution: #f0b04a;
+  --shadow: 0 10px 30px rgba(0,0,0,.45);
+  color-scheme: dark;
+}
+/* Histology skin: H&E stain — eosin pink for work, hematoxylin violet for moving */
+.skin-histology {
+  --accent: #a3306a;
+  --work-bg: #8e2458; --work-ink: #ffffff; --work-dim: rgba(255,226,240,.8);
+  --move-bg: #43237a; --move-ink: #ffffff; --move-dim: rgba(225,210,255,.8);
+  --ready-bg: #f4d3e3; --ready-ink: #3a0f26; --ready-dim: rgba(58,15,38,.7);
+  --clock-work: #ffffff;
+}
+/* Fetal pig skin: black wax dissection tray for work, piglet pink for moving */
+.skin-pig {
+  --accent: #c2456b;
+  --work-bg: #20262d; --work-ink: #f6eef1; --work-dim: rgba(246,238,241,.7);
+  --move-bg: #f497ae; --move-ink: #3b0d1b; --move-dim: rgba(59,13,27,.74);
+  --ready-bg: #ffd9e2; --ready-ink: #3b0d1b; --ready-dim: rgba(59,13,27,.7);
+  --clock-work: #ffb3c4;
+}
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; }
+* { box-sizing: border-box; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+svg { display: block; }
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 10px;
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---------- Top bar ---------- */
+.top { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 220px; }
+.brand-mark { width: 38px; height: 38px; border-radius: 10px; background: var(--accent); color: #fff; display: grid; place-items: center; flex: none; transition: background .3s; }
+.brand-mark svg { width: 24px; height: 24px; }
+.brand h1 { margin: 0; font-family: var(--f-ui); font-weight: 700; font-size: 1.2rem; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand small { display: block; font-family: var(--f-ui); color: var(--muted); font-size: .85rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.icon-btn { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-family: var(--f-ui); font-weight: 600; font-size: .95rem; white-space: nowrap; }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn:hover { border-color: var(--accent); }
+.icon-btn[aria-pressed="false"] { color: var(--muted); }
+
+.skins { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 3px; gap: 2px; }
+.skins button { height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; font-family: var(--f-ui); font-weight: 600; font-size: .92rem; color: var(--muted); }
+.skins button svg { width: 18px; height: 18px; }
+.skins button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+.awake { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px; font-family: var(--f-ui); font-weight: 600; font-size: .9rem; border-radius: 10px; color: var(--good); }
+.awake::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 22%, transparent); }
+.awake.bad { color: var(--caution); }
+@media (max-width: 760px) { .icon-btn .lbl, .skins .lbl { display: none; } .icon-btn { padding: 0 10px; } }
+
+/* ---------- Stage ---------- */
+.stage {
+  position: relative; overflow: hidden; border-radius: 22px; min-height: 320px;
+  display: grid; grid-template-rows: auto 1fr auto;
+  padding: clamp(14px, 2.4vw, 32px) clamp(16px, 2.6vw, 36px) clamp(26px, 3vw, 40px);
+  transition: background-color .5s ease, color .5s ease;
+  background: var(--work-bg); color: var(--work-ink); --dim: var(--work-dim); --clock: var(--clock-work); --track: rgba(255,255,255,.22);
+}
+.stage[data-phase="move"] { background: var(--move-bg); color: var(--move-ink); --dim: var(--move-dim); --clock: var(--move-ink); --track: rgba(0,0,0,.16); }
+.stage[data-phase="ready"] { background: var(--ready-bg); color: var(--ready-ink); --dim: var(--ready-dim); --clock: var(--ready-ink); --track: rgba(0,0,0,.12); }
+.stage[data-phase="done"] { background: var(--surface); color: var(--ink); --dim: var(--muted); --clock: var(--ink); border: 1px solid var(--line); --track: var(--line); }
+.skin-histology .stage[data-phase="move"], .skin-histology .stage[data-phase="station"] { --track: rgba(255,255,255,.2); }
+.stage > .layer { position: relative; z-index: 3; min-width: 0; }
+
+.stage-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px 24px; }
+.phase { flex: 1 1 auto; min-width: 0; font-family: var(--f-display); font-weight: 900; text-transform: uppercase; letter-spacing: .03em; line-height: .92; font-size: clamp(2rem, min(5.6vw, 10vh), 7rem); display: flex; align-items: center; gap: .22em; text-wrap: balance; }
+.phase svg { width: .85em; height: .85em; flex: none; }
+.stage[data-phase="move"] .phase span { animation: nudge 1.4s ease-in-out infinite; display: inline-block; }
+@keyframes nudge { 50% { transform: translateX(.12em); } }
+.rot { text-align: right; font-family: var(--f-ui); flex: none; }
+.rot-label { text-transform: uppercase; letter-spacing: .14em; font-size: clamp(.8rem, 1.3vw, 1.1rem); font-weight: 600; color: var(--dim); }
+.rot-num { font-family: var(--f-display); font-weight: 800; font-size: clamp(2rem, min(5vw, 9vh), 5.6rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.rot-num span { color: var(--dim); font-weight: 700; }
+
+.clock-wrap { display: grid; place-items: center; min-height: 0; container-type: size; }
+.clock {
+  font-family: var(--f-display); font-weight: 800; line-height: .8; color: var(--clock);
+  font-size: clamp(6rem, min(30vw, 42vh), 30rem);
+  font-size: min(calc(97cqw / var(--w, 2)), 122cqh);
+  font-variant-numeric: tabular-nums; display: flex; align-items: center; white-space: nowrap;
+  transition: color .4s;
+}
+.clock .d { display: inline-block; width: .56em; text-align: center; }
+.clock .c { display: inline-block; width: .26em; text-align: center; transform: translateY(-.05em); }
+.stage[data-status="paused"] .clock { animation: blink 1.2s steps(2, start) infinite; }
+@keyframes blink { to { opacity: .3; } }
+.stage.warn .clock { color: var(--warn); }
+
+.stage-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px 20px; flex-wrap: wrap; font-family: var(--f-ui); }
+.next { font-size: clamp(1rem, min(2vw, 3.4vh), 1.8rem); font-weight: 600; color: var(--dim); min-width: 0; }
+.next b { color: inherit; font-weight: 700; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; font-weight: 700; font-size: clamp(1rem, 2vw, 1.6rem); text-transform: uppercase; letter-spacing: .08em; background: var(--warn); color: #2b1d00; }
+.pill svg { width: 1.1em; height: 1.1em; }
+
+.bar { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: var(--track); z-index: 4; }
+.bar i { display: block; height: 100%; width: 0%; background: currentColor; opacity: .85; transition: width .12s linear; }
+.stage.warn .bar i { background: var(--warn); opacity: 1; }
+.stage.warn::after { content: ""; position: absolute; inset: 0; border: 9px solid var(--warn); border-radius: inherit; z-index: 5; pointer-events: none; animation: warnpulse 1s ease-in-out infinite; }
+@keyframes warnpulse { 50% { opacity: .45; } }
+.stage.flash { animation: flash .6s ease-out 2; }
+@keyframes flash { 50% { filter: brightness(1.3); } }
+
+/* ---------- Theme decorations ---------- */
+.fx, .deco { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+.deco > * { position: absolute; }
+.deco [data-skin], .deco [data-phase-only] { display: none; }
+.skin-classic .deco [data-skin="classic"], .skin-histology .deco [data-skin="histology"], .skin-pig .deco [data-skin="pig"] { display: block; }
+.stage:not([data-phase="move"]) .deco [data-phase-only="move"] { display: none !important; }
+.stage[data-phase="move"] .deco [data-phase-only="rest"], .stage[data-phase="done"] .deco [data-phase-only="move"] { display: none !important; }
+
+/* Classic: marching arrows while moving */
+.chevrons { left: 0; right: 0; bottom: 14px; height: clamp(40px, 7vh, 80px); background: currentColor; opacity: .14;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M18 10l30 30-30 30h16l30-30-30-30z' fill='black'/%3E%3C/svg%3E") 0 0 / auto 100% repeat-x;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M18 10l30 30-30 30h16l30-30-30-30z' fill='black'/%3E%3C/svg%3E") 0 0 / auto 100% repeat-x;
+  animation: march 1.2s linear infinite; }
+@keyframes march { to { -webkit-mask-position: 80px 0; mask-position: 80px 0; } }
+.classic-ring { right: -12vmin; top: -12vmin; width: 48vmin; height: 48vmin; border-radius: 50%; border: 3vmin solid currentColor; opacity: .06; }
+
+/* Histology: microscope field of view + scale bar + sliding glass slide */
+.fov { inset: 0; background: radial-gradient(ellipse 72% 80% at 50% 52%, transparent 62%, rgba(0,0,0,.38) 100%); }
+.reticle { left: 50%; top: 50%; width: 1px; height: 1px; }
+.scalebar { right: clamp(16px, 2.6vw, 36px); bottom: 26px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-family: var(--f-ui); font-weight: 600; font-size: .85rem; color: var(--dim); }
+.scalebar i { display: block; width: 90px; height: 5px; background: currentColor; border-radius: 2px; }
+.glass { bottom: 22px; width: clamp(150px, 20vw, 300px); left: -30%; animation: slide-across 5.5s linear infinite; }
+@keyframes slide-across { from { left: -30%; } to { left: 108%; } }
+
+/* Fetal pig: T-pins, resting pig, trotting pig */
+.pin { width: clamp(30px, 4vw, 56px); opacity: .9; }
+.pig-rest { right: clamp(14px, 2.4vw, 34px); bottom: 22px; width: clamp(90px, 11vw, 170px); }
+.pig-run { bottom: 20px; width: clamp(100px, 13vw, 200px); left: -25%; animation: trot-across 6s linear infinite; }
+@keyframes trot-across { from { left: -25%; } to { left: 108%; } }
+.pig-run .pig-body { animation: bob .36s ease-in-out infinite alternate; }
+@keyframes bob { to { transform: translateY(-3px); } }
+.pig-run .leg-a { transform-box: fill-box; transform-origin: 50% 0; animation: legA .36s ease-in-out infinite alternate; }
+.pig-run .leg-b { transform-box: fill-box; transform-origin: 50% 0; animation: legA .36s ease-in-out infinite alternate-reverse; }
+@keyframes legA { from { transform: rotate(22deg); } to { transform: rotate(-22deg); } }
+.pig-tail { transform-box: fill-box; transform-origin: 100% 60%; animation: wag 1.6s ease-in-out infinite; }
+@keyframes wag { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-18deg); } 86% { transform: rotate(14deg); } }
+.pig-eye { animation: blinkeye 5s infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes blinkeye { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+.species { right: clamp(16px, 2.6vw, 36px); top: auto; bottom: 26px; font-family: var(--f-body); font-style: italic; font-weight: 500; font-size: .85rem; color: var(--dim); }
+.stage:not([data-phase="move"]) .species { display: none !important; }
+.skin-pig .stage[data-phase="station"] { box-shadow: inset 0 0 0 10px #3a434d, inset 0 0 0 12px #14181c; }
+
+/* ---------- Rotation map ---------- */
+.map-wrap { display: grid; gap: 6px; }
+.map-head { display: flex; justify-content: space-between; font-family: var(--f-ui); font-size: .9rem; color: var(--muted); font-weight: 600; gap: 12px; flex-wrap: wrap; }
+.map-head b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.map { display: flex; gap: 3px; height: 32px; overflow-x: auto; }
+.seg { border: 0; padding: 0; border-radius: 6px; min-width: 6px; font-family: var(--f-ui); font-weight: 700; font-size: .8rem; color: var(--work-ink); background: var(--work-bg); opacity: .92; position: relative; overflow: hidden; }
+.seg.move { background: var(--move-bg); color: var(--move-ink); min-width: 4px; }
+.seg.ready { background: var(--ready-bg); color: var(--ready-ink); }
+.seg.past { opacity: .25; }
+.seg.now { opacity: 1; outline: 3px solid var(--ink); outline-offset: 1px; z-index: 1; }
+.seg:hover { opacity: 1; }
+.seg .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: rgba(0,0,0,.25); }
+
+/* ---------- Controls ---------- */
+.controls { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ctl { height: 54px; min-width: 54px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--f-ui); font-weight: 700; font-size: 1.05rem; }
+.ctl:hover { border-color: var(--accent); }
+.ctl svg { width: 22px; height: 22px; }
+.ctl.primary { background: var(--accent); border-color: var(--accent); color: #fff; min-width: 170px; font-size: 1.25rem; height: 60px; box-shadow: var(--shadow); }
+.ctl.primary:hover { filter: brightness(1.1); }
+.ctl.armed { background: #c8372d; border-color: #c8372d; color: #fff; }
+.keys { width: 100%; text-align: center; font-family: var(--f-ui); color: var(--muted); font-size: .85rem; }
+.keys kbd { font-family: var(--f-ui); font-weight: 700; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; background: var(--surface); color: var(--ink); }
+@media (max-width: 760px) { .keys { display: none; } .ctl .lbl { display: none; } .ctl.primary .lbl, .ctl.armed .lbl { display: inline; } }
+
+/* ---------- Present mode: the stage fills the whole screen ---------- */
+body.present .app { padding: 0; gap: 0; grid-template-rows: 1fr; }
+body.present .stage { border-radius: 0; border: 0; grid-row: 1; }
+body.present .map-wrap, body.present .keys { display: none; }
+body.present .top, body.present .controls {
+  position: fixed; z-index: 30; left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 16px; padding: 8px 10px;
+  width: max-content; max-width: calc(100% - 24px);
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+}
+body.present .top { top: calc(10px + env(safe-area-inset-top, 0px)); }
+body.present .top .brand { display: none; }
+body.present .controls { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+body.present.ui-on .top, body.present.ui-on .controls { opacity: 1; pointer-events: auto; }
+body.present.ui-off { cursor: none; }
+
+/* ---------- Settings drawer ---------- */
+.scrim { position: fixed; inset: 0; background: rgba(5,15,22,.45); z-index: 40; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100%); z-index: 41;
+  background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow);
+  display: grid; grid-template-rows: auto 1fr auto;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px);
+}
+.drawer header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line); gap: 12px; }
+.drawer h2 { margin: 0; font-family: var(--f-ui); font-size: 1.4rem; font-weight: 700; }
+.drawer h2 small { display: block; font-size: .9rem; color: var(--muted); font-weight: 600; }
+.drawer-body { overflow-y: auto; padding: 4px 20px 20px; display: grid; align-content: start; }
+.field { padding: 16px 0; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.field:last-child { border-bottom: 0; }
+.field-label { font-family: var(--f-ui); font-weight: 700; font-size: 1.1rem; }
+.field-hint { color: var(--muted); font-size: .9rem; margin-top: -6px; }
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.theme-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.theme-card { border: 2px solid var(--line); border-radius: 12px; background: var(--surface); padding: 0; overflow: hidden; display: grid; text-align: left; }
+.theme-card .sw { height: 54px; display: grid; grid-template-columns: 2fr 1fr; }
+.theme-card .sw span { display: grid; place-items: center; }
+.theme-card .sw svg { width: 26px; height: 26px; }
+.theme-card b { font-family: var(--f-ui); font-weight: 700; padding: 6px 8px; font-size: .95rem; }
+.theme-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.stepper button { width: 44px; border: 0; background: var(--bg); font-size: 1.4rem; font-weight: 600; }
+.stepper button:hover { background: var(--accent-soft); }
+.num { width: 64px; height: 46px; border: 0; text-align: center; font-family: var(--f-display); font-weight: 800; font-size: 1.7rem; background: var(--surface); color: var(--ink); font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.num::-webkit-inner-spin-button, .num::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.time-in { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.time-in .num { width: 58px; }
+.time-in .sep { font-family: var(--f-display); font-weight: 800; font-size: 1.6rem; color: var(--muted); }
+.time-in .unit { font-family: var(--f-ui); color: var(--muted); font-size: .8rem; font-weight: 600; padding-right: 10px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-family: var(--f-ui); font-weight: 600; font-variant-numeric: tabular-nums; }
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; position: relative; }
+.toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch { width: 50px; height: 30px; border-radius: 999px; background: var(--line); position: relative; flex: none; transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s; }
+.toggle input:checked + .switch { background: var(--accent); }
+.toggle input:checked + .switch::after { transform: translateX(20px); }
+.toggle input:focus-visible + .switch { outline: 3px solid var(--accent); outline-offset: 2px; }
+.summary { padding: 14px 20px; border-top: 1px solid var(--line); background: var(--bg); font-family: var(--f-ui); display: grid; gap: 2px; }
+.summary .big { font-family: var(--f-display); font-weight: 800; font-size: 2rem; font-variant-numeric: tabular-nums; line-height: 1; }
+.summary .sub { color: var(--muted); font-size: .95rem; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 560px) {
+  .stage { border-radius: 16px; }
+  .stage-head { flex-direction: column; }
+  .rot { text-align: left; }
+  .scalebar, .species { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-classic" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6M12 2v3"/></g></symbol>
+    <symbol id="i-histology" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21h12M9 21v-2h6v2"/><path d="M10 3l4 1-3.2 9.5-3.8-1.3z"/><path d="M9 12.5 7.5 16"/><path d="M14 9a6 6 0 0 1 1.5 10"/><path d="M5 17.5h6"/></g></symbol>
+    <symbol id="i-pig" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12c0-4 3.5-6 8-6 3 0 5 1 6.3 2.6L20 7v3.3c.7.6 1 1.3 1 2.2v1c0 1-1 1.5-2 1.5l-1 2.5v2h-2.5l-.5-1.5h-5L9.5 19.5H7v-2.5C5 15.5 4 14 4 12z"/><path d="M4 11c-1.4 0-2-1-1.6-2"/><circle cx="16.5" cy="10.5" r=".6" fill="currentColor"/></g></symbol>
+    <symbol id="i-work" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3 21 10"/><path d="M17.5 6.5 8 16l-4 1 1-4 9.5-9.5"/><path d="M3 21h8"/></g></symbol>
+    <symbol id="i-move" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4a8 8 0 0 1 2.5 12"/><path d="M20.5 11.5 19.5 16l-4.5-1"/><path d="M7 20a8 8 0 0 1-2.5-12"/><path d="M3.5 12.5 4.5 8l4.5 1"/></g></symbol>
+    <symbol id="i-ready" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g></symbol>
+    <symbol id="i-done" viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="tpin" viewBox="0 0 40 80"><path d="M20 22v54" stroke="#c9d2da" stroke-width="3" stroke-linecap="round"/><path d="M8 22h24" stroke="#c9d2da" stroke-width="5" stroke-linecap="round"/><circle cx="20" cy="12" r="9" fill="currentColor"/><circle cx="17" cy="9" r="3" fill="#fff" opacity=".5"/></symbol>
+  </defs>
+</svg>
+
+<div class="app" id="app">
+  <div class="top" id="top">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg><use id="brandUse" href="#i-classic"/></svg></div>
+      <div style="min-width:0">
+        <h1 id="brandTitle">Lab Practical Timer</h1>
+        <small id="overall">12 stations</small>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="skins" role="group" aria-label="Theme" id="skinBar"></div>
+      <span class="awake" id="awake" hidden></span>
+      <button class="icon-btn" id="soundBtn" aria-pressed="true" title="Sound on or off (M)">
+        <svg id="soundIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+        <span class="lbl" id="soundLbl">Sound on</span>
+      </button>
+      <button class="icon-btn" id="setBtn" title="Settings (S)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+        <span class="lbl">Set times</span>
+      </button>
+      <button class="icon-btn" id="fsBtn" title="Big screen (F)">
+        <svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+        <span class="lbl" id="fsLbl">Big screen</span>
+      </button>
+    </div>
+  </div>
+
+  <section class="stage" id="stage" data-phase="station" data-status="idle">
+    <canvas class="fx" id="fx" aria-hidden="true"></canvas>
+    <div class="deco" aria-hidden="true">
+      <div data-skin="classic" class="classic-ring"></div>
+      <div data-skin="classic" data-phase-only="move" class="chevrons"></div>
+
+      <div data-skin="histology" class="fov"></div>
+      <div data-skin="histology" data-phase-only="rest" class="scalebar"><i></i><span>50 µm · 400×</span></div>
+      <svg data-skin="histology" data-phase-only="move" class="glass" viewBox="0 0 300 100">
+        <rect x="3" y="3" width="294" height="94" rx="6" fill="rgba(255,255,255,.28)" stroke="rgba(255,255,255,.85)" stroke-width="3"/>
+        <rect x="8" y="8" width="70" height="84" rx="3" fill="rgba(255,255,255,.88)"/>
+        <path d="M18 30h50M18 46h40M18 62h46" stroke="#43237a" stroke-width="4" stroke-linecap="round" opacity=".6"/>
+        <rect x="150" y="26" width="110" height="48" rx="3" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2" stroke-dasharray="6 5"/>
+        <ellipse cx="205" cy="50" rx="34" ry="18" fill="#e48bb6" opacity=".9"/>
+        <circle cx="194" cy="46" r="4" fill="#5b2a8f"/><circle cx="210" cy="55" r="4" fill="#5b2a8f"/><circle cx="220" cy="44" r="3.5" fill="#5b2a8f"/><circle cx="198" cy="58" r="3" fill="#5b2a8f"/>
+      </svg>
+
+      <svg data-skin="pig" class="pin" style="left:0;top:36%;color:#e2493f;transform:rotate(-64deg)"><use href="#tpin"/></svg>
+      <svg data-skin="pig" class="pin" style="right:0;top:30%;color:#f2c230;transform:rotate(66deg)"><use href="#tpin"/></svg>
+            <svg data-skin="pig" class="pin" style="left:0;top:62%;color:#3fbf7a;transform:rotate(-112deg)"><use href="#tpin"/></svg>
+      <svg data-skin="pig" class="pin" style="right:0;top:56%;color:#3fa2e2;transform:rotate(108deg)"><use href="#tpin"/></svg>
+      <svg data-skin="pig" data-phase-only="rest" class="pig-rest pig-art" viewBox="0 0 140 92"></svg>
+      <svg data-skin="pig" data-phase-only="move" class="pig-run pig-art" viewBox="0 0 140 92"></svg>
+      <span data-skin="pig" class="species">Sus scrofa domesticus</span>
+    </div>
+
+    <div class="stage-head layer">
+      <div class="phase" id="phase" aria-live="polite"></div>
+      <div class="rot">
+        <div class="rot-label" id="rotLabel">Station</div>
+        <div class="rot-num" id="rotNum">1<span> / 12</span></div>
+      </div>
+    </div>
+    <div class="clock-wrap layer"><div class="clock" id="clock" role="timer" aria-label="Time remaining"></div></div>
+    <div class="stage-foot layer">
+      <div class="next" id="next"></div>
+      <div class="pill" id="warnPill" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h0"/></svg>
+        <span>Finish up</span>
+      </div>
+    </div>
+    <div class="bar"><i id="barFill"></i></div>
+  </section>
+
+  <div class="map-wrap">
+    <div class="map-head">
+      <span>Rotation map · tap a block to jump there</span>
+      <span>Time left overall <b id="leftAll">0:00</b></span>
+    </div>
+    <div class="map" id="map"></div>
+  </div>
+
+  <div class="controls" id="controls">
+    <button class="ctl" id="backBtn" title="Back (←)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5 9 12l9 7V5zM6 5v14"/></svg>
+      <span class="lbl">Back</span>
+    </button>
+    <button class="ctl primary" id="playBtn" title="Start or pause (Space)"></button>
+    <button class="ctl" id="skipBtn" title="Skip ahead (→)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 5 9 7-9 7V5zM18 5v14"/></svg>
+      <span class="lbl">Skip</span>
+    </button>
+    <button class="ctl" id="addBtn" title="Add 15 seconds (+)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="lbl">15 s</span>
+    </button>
+    <button class="ctl" id="resetBtn" title="Start over (R twice)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      <span class="lbl" id="resetLbl">Start over</span>
+    </button>
+    <div class="keys"><kbd>Space</kbd> start/pause · <kbd>→</kbd> skip · <kbd>←</kbd> back · <kbd>+</kbd> add 15 s · <kbd>F</kbd> big screen · <kbd>S</kbd> settings · <kbd>T</kbd> theme</div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-labelledby="setTitle">
+  <header>
+    <h2 id="setTitle">Set times<small id="setFor">Classic</small></h2>
+    <button class="icon-btn" id="closeSet">Done</button>
+  </header>
+  <div class="drawer-body">
+    <div class="field">
+      <div class="field-label">Theme</div>
+      <div class="field-hint">Each theme remembers its own times.</div>
+      <div class="theme-cards" id="themeCards"></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Number of stations</div>
+      <div class="row">
+        <div class="stepper">
+          <button type="button" id="stMinus" aria-label="Fewer stations">−</button>
+          <input class="num" id="stations" type="number" min="1" max="60" inputmode="numeric" aria-label="Number of stations">
+          <button type="button" id="stPlus" aria-label="More stations">+</button>
+        </div>
+        <div class="chips" id="stChips"></div>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Work Time at each station</div>
+      <div class="row">
+        <div class="time-in">
+          <input class="num" id="stMin" type="number" min="0" max="59" inputmode="numeric" aria-label="Work minutes"><span class="unit">min</span>
+          <span class="sep">:</span>
+          <input class="num" id="stSec" type="number" min="0" max="59" inputmode="numeric" aria-label="Work seconds"><span class="unit">sec</span>
+        </div>
+      </div>
+      <div class="chips" id="stTimeChips"></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Time to rotate to the next station</div>
+      <div class="row">
+        <div class="time-in">
+          <input class="num" id="mvMin" type="number" min="0" max="59" inputmode="numeric" aria-label="Rotate minutes"><span class="unit">min</span>
+          <span class="sep">:</span>
+          <input class="num" id="mvSec" type="number" min="0" max="59" inputmode="numeric" aria-label="Rotate seconds"><span class="unit">sec</span>
+        </div>
+      </div>
+      <div class="chips" id="mvTimeChips"></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Heads-up before Work Time ends</div>
+      <div class="field-hint">Yellow border, yellow clock, and one beep.</div>
+      <div class="chips" id="warnChips"></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Get-ready countdown before station 1</div>
+      <div class="chips" id="readyChips"></div>
+    </div>
+    <div class="field">
+      <label class="toggle" for="ticks">
+        <span><span class="field-label">Countdown beeps</span><br><span class="field-hint" style="margin:0">Short ticks during the last 3 seconds</span></span>
+        <input type="checkbox" id="ticks"><span class="switch"></span>
+      </label>
+    </div>
+    <div class="field">
+      <div class="field-label">Hear the sounds</div>
+      <div class="chips">
+        <button class="chip" type="button" data-test="station">Work Time</button>
+        <button class="chip" type="button" data-test="move">Rotate</button>
+        <button class="chip" type="button" data-test="warn">Heads-up</button>
+        <button class="chip" type="button" data-test="done">Finished</button>
+      </div>
+    </div>
+  </div>
+  <div class="summary">
+    <span class="sub">Whole practical takes</span>
+    <span class="big" id="sumTotal">0:00</span>
+    <span class="sub" id="sumDetail"></span>
+  </div>
+</aside>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  // ---------- themes ----------
+  const SKINS = {
+    classic:   { name: 'Classic',   title: 'Lab Practical Timer',      icon: 'i-classic',   done: 'Practical complete. Pencils down.' },
+    histology: { name: 'Histology', title: 'Histology Lab Practical',  icon: 'i-histology', done: 'All slides viewed. Pencils down.' },
+    pig:       { name: 'Fetal Pig', title: 'Fetal Pig Lab Practical',  icon: 'i-pig',       done: 'Dissection practical complete. Pencils down.' }
+  };
+  const PROFILE_DEFAULTS = {
+    classic:   { stations: 12, stationSec: 90, moveSec: 20, warnSec: 15, readySec: 0 },
+    histology: { stations: 20, stationSec: 60, moveSec: 15, warnSec: 15, readySec: 0 },
+    pig:       { stations: 15, stationSec: 90, moveSec: 20, warnSec: 15, readySec: 0 }
+  };
+  let S = { skin: 'classic', sound: true, ticks: true, profiles: JSON.parse(JSON.stringify(PROFILE_DEFAULTS)) };
+  try {
+    const saved = JSON.parse(localStorage.getItem('lpt-settings-v2') || 'null');
+    if (saved) {
+      S = { ...S, ...saved, profiles: { ...S.profiles } };
+      for (const k in PROFILE_DEFAULTS) S.profiles[k] = { ...PROFILE_DEFAULTS[k], ...(saved.profiles && saved.profiles[k]) };
+      if (!SKINS[S.skin]) S.skin = 'classic';
+    }
+  } catch (e) {}
+  const save = () => { try { localStorage.setItem('lpt-settings-v2', JSON.stringify(S)); } catch (e) {} };
+  const P = () => S.profiles[S.skin];
+
+  const use = id => `<svg><use href="#${id}"/></svg>`;
+  const ICON = {
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4.5" height="16" rx="1"/><rect x="13.5" y="4" width="4.5" height="16" rx="1"/></svg>',
+    soundOn: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+    soundOff: '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="m17 9 5 6M22 9l-5 6"/>',
+    fsIn: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    fsOut: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'
+  };
+
+  // ---------- schedule ----------
+  let schedule = [];
+  function build() {
+    const p = P();
+    schedule = [];
+    if (p.readySec > 0) schedule.push({ type: 'ready', n: 1, dur: p.readySec * 1000 });
+    for (let i = 1; i <= p.stations; i++) {
+      schedule.push({ type: 'station', n: i, dur: p.stationSec * 1000 });
+      if (i < p.stations && p.moveSec > 0) schedule.push({ type: 'move', n: i + 1, dur: p.moveSec * 1000 });
+    }
+  }
+
+  // ---------- state ----------
+  let idx = 0, remaining = 0, endAt = 0, status = 'idle'; // idle | running | paused | done
+  let lastWhole = null, warned = false;
+
+  const fmt = ms => {
+    const t = Math.max(0, Math.ceil(ms / 1000));
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+  };
+  const totalMs = () => schedule.reduce((a, s) => a + s.dur, 0);
+  const cur = () => schedule[idx];
+  const liveRemaining = () => status === 'running' ? Math.max(0, endAt - performance.now()) : remaining;
+  const active = () => status === 'running' || status === 'paused';
+
+  // ---------- audio ----------
+  let ctx = null;
+  function audio() {
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
+  }
+  function tone(freq, start, dur, type = 'sine', vol = .35, glide) {
+    const a = audio(); if (!a) return;
+    const t0 = a.currentTime + start;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t0);
+    if (glide) o.frequency.exponentialRampToValueAtTime(glide, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  const SOUNDS = {
+    station: () => { tone(880, 0, .18, 'triangle', .45); tone(1175, .22, .32, 'triangle', .45); },
+    move: () => {
+      if (S.skin === 'pig') { tone(420, 0, .22, 'sawtooth', .16, 300); tone(460, .28, .22, 'sawtooth', .16, 320); tone(400, .56, .4, 'sawtooth', .18, 260); }
+      else if (S.skin === 'histology') { tone(1400, 0, .06, 'square', .12); tone(1400, .1, .06, 'square', .12); tone(523, .3, .3, 'triangle', .4); tone(392, .62, .5, 'triangle', .4); }
+      else { tone(523, 0, .28, 'square', .18); tone(523, .32, .28, 'square', .18); tone(392, .64, .55, 'square', .2); }
+    },
+    warn: () => { tone(740, 0, .35, 'sine', .4); },
+    tick: () => { tone(1320, 0, .07, 'sine', .3); },
+    ready: () => { tone(660, 0, .2, 'triangle', .35); },
+    done: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .16, i === 3 ? .7 : .2, 'triangle', .4)); }
+  };
+  const play = name => { if (S.sound && SOUNDS[name]) SOUNDS[name](); };
+
+  // ---------- keep the laptop awake ----------
+  let lock = null, lockState = 'off'; // off | on | failed
+  async function syncWakeLock() {
+    const want = active() && document.visibilityState === 'visible';
+    if (want && !lock) {
+      if (!('wakeLock' in navigator)) { lockState = 'failed'; renderAwake(); return; }
+      try {
+        lock = await navigator.wakeLock.request('screen');
+        lockState = 'on';
+        lock.addEventListener('release', () => { lock = null; lockState = active() ? 'failed' : 'off'; renderAwake(); setTimeout(syncWakeLock, 500); });
+      } catch (e) { lock = null; lockState = 'failed'; }
+    } else if (!active() && lock) {
+      try { await lock.release(); } catch (e) {}
+      lock = null; lockState = 'off';
+    } else if (!active()) lockState = 'off';
+    renderAwake();
+  }
+  function renderAwake() {
+    const el = $('awake');
+    el.hidden = !active();
+    el.classList.toggle('bad', lockState !== 'on');
+    el.textContent = lockState === 'on' ? 'Laptop stays awake' : 'Sleep not blocked';
+    el.title = lockState === 'on'
+      ? 'The screen and laptop will not sleep while the timer is running or paused.'
+      : 'This browser did not allow the timer to block sleep. Click the page once, keep this tab in front, or open the app from its own web address.';
+  }
+  document.addEventListener('visibilitychange', syncWakeLock);
+  document.addEventListener('fullscreenchange', syncWakeLock);
+
+  // ---------- transitions ----------
+  function flash() { const st = $('stage'); st.classList.remove('flash'); void st.offsetWidth; st.classList.add('flash'); }
+  function enter(i, announce = true) {
+    idx = i; remaining = cur().dur; lastWhole = null; warned = false;
+    if (status === 'running') endAt = performance.now() + remaining;
+    if (announce && status === 'running') { play(cur().type); flash(); }
+  }
+  function finish() { status = 'done'; remaining = 0; play('done'); syncWakeLock(); render(); }
+  function advance() { if (idx + 1 >= schedule.length) return finish(); enter(idx + 1); }
+
+  function start() {
+    audio();
+    if (status === 'done') { status = 'idle'; enter(0, false); }
+    const fresh = status === 'idle';
+    status = 'running';
+    endAt = performance.now() + remaining;
+    if (fresh) { play(cur().type); flash(); }
+    syncWakeLock(); render();
+  }
+  function pause() { remaining = liveRemaining(); status = 'paused'; syncWakeLock(); render(); }
+  function toggle() { status === 'running' ? pause() : start(); }
+  function skip() { if (status === 'done') return; if (idx + 1 >= schedule.length) return finish(); enter(idx + 1); render(); }
+  function back() {
+    if (status === 'done') { status = 'paused'; enter(schedule.length - 1, false); syncWakeLock(); render(); return; }
+    const elapsed = cur().dur - liveRemaining();
+    enter(elapsed > 3000 || idx === 0 ? idx : idx - 1, false);
+    render();
+  }
+  function addTime(ms) {
+    if (status === 'done') return;
+    remaining = liveRemaining() + ms;
+    if (status === 'running') endAt = performance.now() + remaining;
+    cur().dur = Math.max(cur().dur, remaining);
+    warned = cur().type === 'station' && remaining <= P().warnSec * 1000;
+    render();
+  }
+  function jump(i) { if (status === 'done') status = 'paused'; enter(i, status === 'running'); syncWakeLock(); render(); }
+  function resetAll() { status = 'idle'; build(); enter(0, false); syncWakeLock(); render(); }
+
+  // ---------- tick loop ----------
+  setInterval(() => {
+    if (status !== 'running') return;
+    const rem = endAt - performance.now();
+    remaining = Math.max(0, rem);
+    const whole = Math.ceil(remaining / 1000);
+    const seg = cur(), warnMs = P().warnSec * 1000;
+    if (whole !== lastWhole) {
+      if (S.ticks && whole >= 1 && whole <= 3 && lastWhole !== null && seg.dur > 4000) play('tick');
+      if (seg.type === 'station' && warnMs > 0 && !warned && remaining <= warnMs && seg.dur > warnMs + 1000) { warned = true; play('warn'); }
+      lastWhole = whole;
+    }
+    if (rem <= 0) advance();
+    render();
+  }, 100);
+
+  // ---------- render ----------
+  function clockHTML(str) {
+    return str.split('').map(ch => ch === ':' ? '<span class="c">:</span>' : `<span class="d">${ch}</span>`).join('');
+  }
+  let mapKey = '';
+  function renderMap() {
+    const key = S.skin + schedule.map(s => s.type[0] + s.dur).join(',');
+    const map = $('map');
+    if (key !== mapKey) {
+      map.innerHTML = '';
+      schedule.forEach((s, i) => {
+        const b = document.createElement('button');
+        b.className = 'seg ' + s.type;
+        b.style.flex = `${s.dur} 1 0`;
+        b.innerHTML = '<span class="fill"></span>' + (s.type === 'station' ? `<span style="position:relative">${s.n}</span>` : '');
+        b.title = s.type === 'station' ? `Station ${s.n} · Work Time ${fmt(s.dur)}` : s.type === 'move' ? `Rotate to station ${s.n} · ${fmt(s.dur)}` : `Get ready · ${fmt(s.dur)}`;
+        b.setAttribute('aria-label', 'Jump to ' + b.title);
+        b.addEventListener('click', () => jump(i));
+        map.appendChild(b);
+      });
+      mapKey = key;
+    }
+    const kids = map.children;
+    for (let i = 0; i < kids.length; i++) {
+      const b = kids[i], isNow = status !== 'done' && i === idx;
+      b.classList.toggle('past', status === 'done' || i < idx);
+      b.classList.toggle('now', isNow);
+      b.firstChild.style.width = isNow ? `${(1 - liveRemaining() / schedule[i].dur) * 100}%` : '0%';
+    }
+  }
+
+  let lastPhase = '';
+  function render() {
+    const st = $('stage'), seg = cur(), rem = liveRemaining(), p = P(), N = p.stations, skin = SKINS[S.skin];
+    const phase = status === 'done' ? 'done' : seg.type;
+    st.dataset.phase = phase;
+    st.dataset.status = status;
+
+    if (phase !== lastPhase) {
+      const labels = { station: ['i-work', 'Work Time'], move: ['i-move', 'Rotate to Next Station'], ready: ['i-ready', 'Get Ready'], done: ['i-done', 'Done'] };
+      $('phase').innerHTML = use(labels[phase][0]) + `<span>${labels[phase][1]}</span>`;
+      lastPhase = phase;
+    }
+    $('rotLabel').textContent = phase === 'move' ? 'Up next' : phase === 'ready' ? 'First up' : 'Station';
+    $('rotNum').innerHTML = `${phase === 'done' ? N : seg.n}<span> / ${N}</span>`;
+
+    const str = fmt(phase === 'done' ? 0 : rem);
+    const clock = $('clock');
+    if (clock.dataset.s !== str) {
+      clock.innerHTML = clockHTML(str);
+      clock.dataset.s = str;
+      const digits = str.replace(/:/g, '').length, colons = str.length - digits;
+      clock.style.setProperty('--w', (digits * 0.56 + colons * 0.26).toFixed(2));
+    }
+
+    let next = '';
+    if (phase === 'done') next = skin.done;
+    else if (status === 'idle') next = 'Press <b>Start</b> when everyone is at their first station';
+    else if (status === 'paused') next = '<b>Paused</b>';
+    else if (phase === 'station') { const nx = schedule[idx + 1]; next = !nx ? 'Last station' : `Then rotate · ${fmt(nx.dur)}`; }
+    else if (phase === 'move') next = 'Move to the next station and wait for Work Time';
+    else next = 'Work Time starts soon';
+    if ($('next').innerHTML !== next) $('next').innerHTML = next;
+
+    const warnMs = p.warnSec * 1000;
+    const warnOn = status !== 'idle' && phase === 'station' && warnMs > 0 && rem <= warnMs && seg.dur > warnMs + 1000;
+    st.classList.toggle('warn', warnOn);
+    $('warnPill').hidden = !warnOn;
+
+    $('barFill').style.width = phase === 'done' ? '100%' : `${(1 - rem / seg.dur) * 100}%`;
+
+    let left = 0;
+    if (phase !== 'done') { left = rem; for (let i = idx + 1; i < schedule.length; i++) left += schedule[i].dur; }
+    $('leftAll').textContent = fmt(left);
+    $('overall').textContent = `${N} stations · ${fmt(p.stationSec * 1000)} work · ${fmt(p.moveSec * 1000)} rotate`;
+
+    const playHTML = status === 'running'
+      ? ICON.pause + '<span class="lbl">Pause</span>'
+      : ICON.play + `<span class="lbl">${status === 'paused' ? 'Resume' : status === 'done' ? 'Run again' : 'Start'}</span>`;
+    if ($('playBtn').innerHTML !== playHTML) $('playBtn').innerHTML = playHTML;
+
+    document.title = status === 'running' ? `${str} ${phase === 'move' ? 'Rotate' : 'Work'} · ${skin.title}` : skin.title;
+    renderMap();
+  }
+
+  function renderChrome() {
+    const skin = SKINS[S.skin];
+    document.body.classList.remove('skin-classic', 'skin-histology', 'skin-pig');
+    document.body.classList.add('skin-' + S.skin);
+    $('brandTitle').textContent = skin.title;
+    $('brandUse').setAttribute('href', '#' + skin.icon);
+    $('setFor').textContent = skin.title;
+    [...$('skinBar').children].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.skin === S.skin)));
+    [...$('themeCards').children].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.skin === S.skin)));
+    $('soundIcon').innerHTML = S.sound ? ICON.soundOn : ICON.soundOff;
+    $('soundBtn').setAttribute('aria-pressed', String(S.sound));
+    $('soundLbl').textContent = S.sound ? 'Sound on' : 'Sound off';
+    $('ticks').checked = S.ticks;
+    fx.reset();
+  }
+
+  // ---------- theme switcher ----------
+  const SKIN_SWATCH = {
+    classic: ['#1f6aa5', '#f2a83b', '#fff'],
+    histology: ['#8e2458', '#43237a', '#fff'],
+    pig: ['#20262d', '#f497ae', '#ffb3c4']
+  };
+  Object.entries(SKINS).forEach(([key, sk]) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.skin = key; b.title = sk.title;
+    b.innerHTML = use(sk.icon) + `<span class="lbl">${sk.name}</span>`;
+    b.addEventListener('click', () => setSkin(key));
+    $('skinBar').appendChild(b);
+
+    const c = document.createElement('button');
+    c.type = 'button'; c.className = 'theme-card'; c.dataset.skin = key;
+    const [w, m, ink] = SKIN_SWATCH[key];
+    c.innerHTML = `<span class="sw"><span style="background:${w};color:${ink}">${use(sk.icon)}</span><span style="background:${m}"></span></span><b>${sk.name}</b>`;
+    c.addEventListener('click', () => setSkin(key));
+    $('themeCards').appendChild(c);
+  });
+  function setSkin(key) {
+    if (key === S.skin) return;
+    S.skin = key; save();
+    renderChrome();
+    applySettings(true);
+  }
+
+  // ---------- settings UI ----------
+  const STATION_PRESETS = [45, 60, 90, 120, 180];
+  const MOVE_PRESETS = [10, 15, 20, 30];
+  const WARN_PRESETS = [0, 10, 15, 30];
+  const READY_PRESETS = [0, 5, 10];
+  const COUNT_PRESETS = [10, 12, 15, 20, 24];
+  const short = s => s === 0 ? 'Off' : s < 60 ? `${s} s` : fmt(s * 1000);
+  const chipSets = [];
+  function chips(el, values, key, labelFn) {
+    values.forEach(v => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = labelFn(v);
+      b.addEventListener('click', () => { P()[key] = v; applySettings(); });
+      el.appendChild(b);
+    });
+    chipSets.push({ el, values, key });
+  }
+  chips($('stChips'), COUNT_PRESETS, 'stations', v => String(v));
+  chips($('stTimeChips'), STATION_PRESETS, 'stationSec', v => v < 60 ? `${v} s` : fmt(v * 1000));
+  chips($('mvTimeChips'), MOVE_PRESETS, 'moveSec', v => `${v} s`);
+  chips($('warnChips'), WARN_PRESETS, 'warnSec', short);
+  chips($('readyChips'), READY_PRESETS, 'readySec', short);
+
+  function syncForm() {
+    const p = P();
+    $('stations').value = p.stations;
+    $('stMin').value = Math.floor(p.stationSec / 60); $('stSec').value = String(p.stationSec % 60).padStart(2, '0');
+    $('mvMin').value = Math.floor(p.moveSec / 60); $('mvSec').value = String(p.moveSec % 60).padStart(2, '0');
+    chipSets.forEach(({ el, values, key }) => [...el.children].forEach((b, i) => b.setAttribute('aria-pressed', String(values[i] === p[key]))));
+    build();
+    $('sumTotal').textContent = fmt(totalMs());
+    const moves = p.moveSec > 0 ? Math.max(0, p.stations - 1) : 0;
+    $('sumDetail').textContent = `${p.stations} × ${fmt(p.stationSec * 1000)} Work Time + ${moves} × ${fmt(p.moveSec * 1000)} rotating` + (p.readySec ? ` + ${p.readySec} s get ready` : '');
+  }
+
+  function applySettings(skinChanged = false) {
+    const p = P();
+    p.stations = Math.min(60, Math.max(1, Math.round(p.stations) || 1));
+    p.stationSec = Math.min(3599, Math.max(5, Math.round(p.stationSec) || 5));
+    p.moveSec = Math.min(3599, Math.max(0, Math.round(p.moveSec) || 0));
+    save();
+    const old = cur(), keepRem = liveRemaining();
+    syncForm();
+    if (status === 'idle' || status === 'done' || skinChanged) {
+      if (status === 'done') status = 'idle';
+      if (skinChanged && active()) {
+        // keep the class where it is: same rotation, same phase
+        let ni = schedule.findIndex(s => s.type === old.type && s.n === old.n);
+        idx = ni < 0 ? 0 : ni;
+        remaining = Math.min(keepRem, schedule[idx].dur);
+        if (status === 'running') endAt = performance.now() + remaining;
+      } else enter(0, false);
+    } else {
+      let ni = schedule.findIndex(s => s.type === old.type && s.n === old.n);
+      if (ni < 0) ni = Math.min(idx, schedule.length - 1);
+      idx = ni;
+      remaining = Math.min(keepRem, schedule[idx].dur);
+      if (status === 'running') endAt = performance.now() + remaining;
+    }
+    render();
+  }
+
+  const readTime = (m, s) => (parseInt($(m).value, 10) || 0) * 60 + (parseInt($(s).value, 10) || 0);
+  $('stations').addEventListener('change', () => { P().stations = parseInt($('stations').value, 10); applySettings(); });
+  $('stMinus').addEventListener('click', () => { P().stations--; applySettings(); });
+  $('stPlus').addEventListener('click', () => { P().stations++; applySettings(); });
+  ['stMin', 'stSec'].forEach(id => $(id).addEventListener('change', () => { P().stationSec = readTime('stMin', 'stSec'); applySettings(); }));
+  ['mvMin', 'mvSec'].forEach(id => $(id).addEventListener('change', () => { P().moveSec = readTime('mvMin', 'mvSec'); applySettings(); }));
+  $('ticks').addEventListener('change', () => { S.ticks = $('ticks').checked; save(); });
+  document.querySelectorAll('[data-test]').forEach(b => b.addEventListener('click', () => { const s = S.sound; S.sound = true; play(b.dataset.test); S.sound = s; }));
+
+  function openSet(on) {
+    $('drawer').hidden = !on; $('scrim').hidden = !on;
+    if (on) $('closeSet').focus(); else $('setBtn').focus();
+  }
+  $('setBtn').addEventListener('click', () => openSet(true));
+  $('closeSet').addEventListener('click', () => openSet(false));
+  $('scrim').addEventListener('click', () => openSet(false));
+
+  // ---------- controls ----------
+  $('playBtn').addEventListener('click', toggle);
+  $('skipBtn').addEventListener('click', skip);
+  $('backBtn').addEventListener('click', back);
+  $('addBtn').addEventListener('click', () => addTime(15000));
+  let armTimer = null;
+  function disarm() { const btn = $('resetBtn'); btn.classList.remove('armed'); $('resetLbl').textContent = 'Start over'; }
+  function armReset() {
+    const btn = $('resetBtn');
+    if (btn.classList.contains('armed') || status === 'idle') { clearTimeout(armTimer); disarm(); resetAll(); return; }
+    btn.classList.add('armed'); $('resetLbl').textContent = 'Tap again to start over';
+    armTimer = setTimeout(disarm, 3000);
+  }
+  $('resetBtn').addEventListener('click', armReset);
+  $('soundBtn').addEventListener('click', () => { S.sound = !S.sound; save(); if (S.sound) audio(); renderChrome(); });
+
+  // ---------- big screen (present mode) ----------
+  let uiTimer = null;
+  function showUI() {
+    if (!document.body.classList.contains('present')) return;
+    document.body.classList.add('ui-on'); document.body.classList.remove('ui-off');
+    clearTimeout(uiTimer);
+    uiTimer = setTimeout(() => { document.body.classList.remove('ui-on'); document.body.classList.add('ui-off'); }, 2600);
+  }
+  function setPresent(on) {
+    document.body.classList.toggle('present', on);
+    document.body.classList.remove('ui-on', 'ui-off');
+    $('fsIcon').innerHTML = on ? ICON.fsOut : ICON.fsIn;
+    $('fsLbl').textContent = on ? 'Exit big screen' : 'Big screen';
+    if (on) showUI();
+    fx.resize();
+  }
+  function togglePresent() {
+    const on = !document.body.classList.contains('present');
+    setPresent(on);
+    try {
+      if (on && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    } catch (e) {}
+  }
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && document.body.classList.contains('present')) setPresent(false); });
+  $('fsBtn').addEventListener('click', togglePresent);
+  ['pointermove', 'pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, showUI, { passive: true }));
+
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input')) return;
+    if (!$('drawer').hidden) { if (e.key === 'Escape') openSet(false); return; }
+    const k = e.key.toLowerCase();
+    if (k === ' ' || k === 'k') { e.preventDefault(); toggle(); }
+    else if (k === 'arrowright' || k === 'n') skip();
+    else if (k === 'arrowleft') back();
+    else if (k === '+' || k === '=') addTime(15000);
+    else if (k === 'f') togglePresent();
+    else if (k === 'escape' && document.body.classList.contains('present')) setPresent(false);
+    else if (k === 's') openSet(true);
+    else if (k === 'm') $('soundBtn').click();
+    else if (k === 'r') armReset();
+    else if (k === 't') { const keys = Object.keys(SKINS); setSkin(keys[(keys.indexOf(S.skin) + 1) % keys.length]); }
+  });
+
+  // ---------- histology background: drifting H&E-stained cells ----------
+  const fx = (() => {
+    const cv = $('fx'), g = cv.getContext('2d');
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let cells = [], W = 0, H = 0, dpr = 1, raf = 0;
+    function resize() {
+      const r = cv.getBoundingClientRect();
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      W = r.width; H = r.height;
+      cv.width = Math.max(1, W * dpr); cv.height = Math.max(1, H * dpr);
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function seed() {
+      cells = [];
+      const count = Math.round(Math.min(46, Math.max(16, (W * H) / 26000)));
+      for (let i = 0; i < count; i++) {
+        const r = 18 + Math.random() * 46;
+        const pts = 9, wob = [];
+        for (let k = 0; k < pts; k++) wob.push(0.82 + Math.random() * 0.3);
+        cells.push({ x: Math.random() * W, y: Math.random() * H, r, wob, rot: Math.random() * 6.28,
+          vx: (Math.random() - .5) * .18, vy: (Math.random() - .5) * .14, vr: (Math.random() - .5) * .002,
+          nx: (Math.random() - .5) * r * .35, ny: (Math.random() - .5) * r * .35, nr: r * (.26 + Math.random() * .12) });
+      }
+    }
+    function blob(c) {
+      const n = c.wob.length;
+      g.beginPath();
+      for (let k = 0; k <= n + 1; k++) {
+        const a0 = c.rot + (k % n) / n * Math.PI * 2, a1 = c.rot + ((k + 1) % n) / n * Math.PI * 2;
+        const r0 = c.r * c.wob[k % n], r1 = c.r * c.wob[(k + 1) % n];
+        const x0 = c.x + Math.cos(a0) * r0, y0 = c.y + Math.sin(a0) * r0;
+        const x1 = c.x + Math.cos(a1) * r1, y1 = c.y + Math.sin(a1) * r1;
+        const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+        if (k === 0) g.moveTo(mx, my); else g.quadraticCurveTo(x0, y0, mx, my);
+      }
+      g.closePath();
+    }
+    function draw() {
+      g.clearRect(0, 0, W, H);
+      const phase = $('stage').dataset.phase;
+      const move = phase === 'move', light = phase === 'ready' || phase === 'done';
+      const cyto = light ? 'rgba(200,70,130,.16)' : move ? 'rgba(190,140,255,.16)' : 'rgba(255,160,205,.17)';
+      const edge = light ? 'rgba(160,40,100,.22)' : 'rgba(255,255,255,.14)';
+      const nuc = light ? 'rgba(80,30,140,.28)' : move ? 'rgba(255,255,255,.18)' : 'rgba(70,20,110,.45)';
+      const speed = move ? 3.2 : 1;
+      for (const c of cells) {
+        if (!reduce) {
+          c.x += c.vx * speed; c.y += c.vy * speed; c.rot += c.vr * speed;
+          if (c.x < -c.r) c.x = W + c.r; if (c.x > W + c.r) c.x = -c.r;
+          if (c.y < -c.r) c.y = H + c.r; if (c.y > H + c.r) c.y = -c.r;
+        }
+        blob(c); g.fillStyle = cyto; g.fill(); g.lineWidth = 1.5; g.strokeStyle = edge; g.stroke();
+        g.beginPath(); g.ellipse(c.x + c.nx, c.y + c.ny, c.nr, c.nr * .82, c.rot, 0, Math.PI * 2); g.fillStyle = nuc; g.fill();
+      }
+    }
+    function loop() { draw(); raf = requestAnimationFrame(loop); }
+    function reset() {
+      cancelAnimationFrame(raf);
+      resize();
+      if (S.skin !== 'histology') { g.clearRect(0, 0, W, H); return; }
+      seed();
+      if (reduce) draw(); else loop();
+    }
+    window.addEventListener('resize', () => { if (S.skin === 'histology') { resize(); seed(); if (reduce) draw(); } else resize(); });
+    return { reset, resize: () => setTimeout(() => { resize(); if (S.skin === 'histology') { seed(); if (reduce) draw(); } }, 60) };
+  })();
+
+  // ---------- piglet art (inlined so leg and tail animations apply) ----------
+  const PIG = `<g class="pig-body"> <path class="pig-tail" d="M20 38c-7 0-11-5-8-9s9-1 7 3-7 2-5-2" fill="none" stroke="#7c2c45" stroke-width="3" stroke-linecap="round"/> <rect class="leg-b" x="30" y="56" width="11" height="24" rx="4" fill="#f4a3b7" stroke="#7c2c45" stroke-width="3"/> <rect class="leg-a" x="82" y="56" width="11" height="24" rx="4" fill="#f4a3b7" stroke="#7c2c45" stroke-width="3"/> <ellipse cx="60" cy="46" rx="42" ry="27" fill="#ffd0dc" stroke="#7c2c45" stroke-width="3"/> <rect class="leg-a" x="42" y="60" width="11" height="24" rx="4" fill="#ffd0dc" stroke="#7c2c45" stroke-width="3"/> <rect class="leg-b" x="92" y="60" width="11" height="24" rx="4" fill="#ffd0dc" stroke="#7c2c45" stroke-width="3"/> <circle cx="104" cy="38" r="21" fill="#ffd0dc" stroke="#7c2c45" stroke-width="3"/> <path d="M95 21 101 4 111 20z" fill="#f4a3b7" stroke="#7c2c45" stroke-width="3" stroke-linejoin="round"/> <ellipse cx="123" cy="42" rx="10" ry="9" fill="#f4a3b7" stroke="#7c2c45" stroke-width="3"/> <ellipse cx="120" cy="42" rx="1.8" ry="3" fill="#7c2c45"/> <ellipse cx="126" cy="42" rx="1.8" ry="3" fill="#7c2c45"/> <ellipse class="pig-eye" cx="108" cy="32" rx="3" ry="3.4" fill="#2a0d17"/> <ellipse cx="103" cy="47" rx="5" ry="3" fill="#f58aa5" opacity=".7"/> </g>`;
+  document.querySelectorAll('.pig-art').forEach(el => { el.innerHTML = PIG; });
+
+  // ---------- boot ----------
+  renderChrome();
+  syncForm();
+  enter(0, false);
+  render();
+  renderAwake();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+</script>
+
+</body>
+</html>
