@@ -187,13 +187,11 @@ svg { display: block; }
 @keyframes march { to { -webkit-mask-position: 80px 0; mask-position: 80px 0; } }
 .classic-ring { right: -12vmin; top: -12vmin; width: 48vmin; height: 48vmin; border-radius: 50%; border: 3vmin solid currentColor; opacity: .06; }
 
-/* Histology: microscope field of view + scale bar + sliding glass slide */
+/* Histology: microscope field of view + scale bar (the nosepiece animation is drawn on the fx canvas) */
 .fov { inset: 0; background: radial-gradient(ellipse 72% 80% at 50% 52%, transparent 62%, rgba(0,0,0,.38) 100%); }
 .reticle { left: 50%; top: 50%; width: 1px; height: 1px; }
 .scalebar { right: clamp(16px, 2.6vw, 36px); bottom: 26px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-family: var(--f-ui); font-weight: 600; font-size: .85rem; color: var(--dim); }
 .scalebar i { display: block; width: 90px; height: 5px; background: currentColor; border-radius: 2px; }
-.glass { bottom: 22px; width: clamp(150px, 20vw, 300px); left: -30%; animation: slide-across 5.5s linear infinite; }
-@keyframes slide-across { from { left: -30%; } to { left: 108%; } }
 
 /* Fetal pig: T-pins, resting pig, trotting pig */
 .pin { width: clamp(30px, 4vw, 56px); opacity: .9; }
@@ -317,10 +315,10 @@ body.present.ui-off { cursor: none; }
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="i-classic" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6M12 2v3"/></g></symbol>
-    <symbol id="i-histology" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21h12M9 21v-2h6v2"/><path d="M10 3l4 1-3.2 9.5-3.8-1.3z"/><path d="M9 12.5 7.5 16"/><path d="M14 9a6 6 0 0 1 1.5 10"/><path d="M5 17.5h6"/></g></symbol>
-    <symbol id="i-pig" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12c0-4 3.5-6 8-6 3 0 5 1 6.3 2.6L20 7v3.3c.7.6 1 1.3 1 2.2v1c0 1-1 1.5-2 1.5l-1 2.5v2h-2.5l-.5-1.5h-5L9.5 19.5H7v-2.5C5 15.5 4 14 4 12z"/><path d="M4 11c-1.4 0-2-1-1.6-2"/><circle cx="16.5" cy="10.5" r=".6" fill="currentColor"/></g></symbol>
+    <symbol id="i-histology" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="M9.2 2.6 13 3.9l-2.9 8.4-3.8-1.3z"/><path d="M8.3 12 7.6 14"/><path d="M5 17h8"/><path d="M12.5 21c4.5 0 7-3 7-6.5S17 8.5 12.6 8.2"/></g></symbol>
+    <symbol id="i-pig" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.4 6.4 3 5.2l1.2 5.3M16.6 6.4 21 5.2l-1.2 5.3"/><path d="M12 5.5c4.6 0 8 3.2 8 7.6S16.6 20.5 12 20.5 4 17.5 4 13.1s3.4-7.6 8-7.6z"/><ellipse cx="12" cy="15.4" rx="3.8" ry="2.7"/><path d="M10.6 15.4h0M13.4 15.4h0M8.7 11h0M15.3 11h0" stroke-width="2.6"/></g></symbol>
     <symbol id="i-work" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3 21 10"/><path d="M17.5 6.5 8 16l-4 1 1-4 9.5-9.5"/><path d="M3 21h8"/></g></symbol>
-    <symbol id="i-move" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4a8 8 0 0 1 2.5 12"/><path d="M20.5 11.5 19.5 16l-4.5-1"/><path d="M7 20a8 8 0 0 1-2.5-12"/><path d="M3.5 12.5 4.5 8l4.5 1"/></g></symbol>
+    <symbol id="i-move" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="14.5" width="7" height="6.5" rx="1.5" opacity=".45"/><rect x="15" y="14.5" width="7" height="6.5" rx="1.5"/><path d="M5.5 11C5.5 3 18.5 3 18.5 10.5"/><path d="m15.4 8 3.1 3.1L21.6 8"/></g></symbol>
     <symbol id="i-ready" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g></symbol>
     <symbol id="i-done" viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="tpin" viewBox="0 0 40 80"><path d="M20 22v54" stroke="#c9d2da" stroke-width="3" stroke-linecap="round"/><path d="M8 22h24" stroke="#c9d2da" stroke-width="5" stroke-linecap="round"/><circle cx="20" cy="12" r="9" fill="currentColor"/><circle cx="17" cy="9" r="3" fill="#fff" opacity=".5"/></symbol>
@@ -362,14 +360,6 @@ body.present.ui-off { cursor: none; }
 
       <div data-skin="histology" class="fov"></div>
       <div data-skin="histology" data-phase-only="rest" class="scalebar"><i></i><span>50 µm · 400×</span></div>
-      <svg data-skin="histology" data-phase-only="move" class="glass" viewBox="0 0 300 100">
-        <rect x="3" y="3" width="294" height="94" rx="6" fill="rgba(255,255,255,.28)" stroke="rgba(255,255,255,.85)" stroke-width="3"/>
-        <rect x="8" y="8" width="70" height="84" rx="3" fill="rgba(255,255,255,.88)"/>
-        <path d="M18 30h50M18 46h40M18 62h46" stroke="#43237a" stroke-width="4" stroke-linecap="round" opacity=".6"/>
-        <rect x="150" y="26" width="110" height="48" rx="3" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2" stroke-dasharray="6 5"/>
-        <ellipse cx="205" cy="50" rx="34" ry="18" fill="#e48bb6" opacity=".9"/>
-        <circle cx="194" cy="46" r="4" fill="#5b2a8f"/><circle cx="210" cy="55" r="4" fill="#5b2a8f"/><circle cx="220" cy="44" r="3.5" fill="#5b2a8f"/><circle cx="198" cy="58" r="3" fill="#5b2a8f"/>
-      </svg>
 
       <svg data-skin="pig" class="pin" style="left:0;top:36%;color:#e2493f;transform:rotate(-64deg)"><use href="#tpin"/></svg>
       <svg data-skin="pig" class="pin" style="right:0;top:30%;color:#f2c230;transform:rotate(66deg)"><use href="#tpin"/></svg>
@@ -955,7 +945,7 @@ body.present.ui-off { cursor: none; }
     else if (k === 't') { const keys = Object.keys(SKINS); setSkin(keys[(keys.indexOf(S.skin) + 1) % keys.length]); }
   });
 
-  // ---------- histology background: drifting H&E-stained cells ----------
+  // ---------- histology background: drifting H&E-stained cells, and the nosepiece turning while students rotate ----------
   const fx = (() => {
     const cv = $('fx'), g = cv.getContext('2d');
     const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -992,14 +982,116 @@ body.present.ui-off { cursor: none; }
       }
       g.closePath();
     }
+
+    // Rotate to Next Station: the student's view of the revolving nosepiece clicking to the next objective.
+    // Turret center sits at the origin; screen x right, y down, z toward the viewer.
+    const OBJ = [ // standard objective color codes; barrel length as a fraction of the turret scale
+      { mag: '4×', len: .30, band: '255,95,95' },
+      { mag: '10×', len: .36, band: '255,212,70' },
+      { mag: '40×', len: .42, band: '95,185,255' },
+      { mag: '100×', len: .46, band: '255,255,255' }
+    ];
+    const TILT = .5, STEP_MS = 3000, TURN_MS = 900;
+    let moveT0 = 0, wasMove = false;
+    function nosepiece(now) {
+      const k = Math.min(W, H * 1.3), D = k * 2.4, cx = W / 2, cy = H * .1;
+      const t = reduce ? 0 : now - moveT0;
+      const step = Math.floor(t / STEP_MS), into = t - step * STEP_MS, p = Math.min(1, into / TURN_MS);
+      const ease = p === 0 ? 0 : 1 + 2.2 * (p - 1) ** 3 + 1.2 * (p - 1) ** 2; // slight overshoot, like the detent clicking in
+      const turn = (step + ease) * Math.PI / 2;
+      const settled = reduce ? 1 : Math.max(0, Math.min(1, (into - TURN_MS) / 400));
+
+      const sT = Math.sin(TILT), cT = Math.cos(TILT);
+      const a = [0, cT, -sT], u = [1, 0, 0], v = [0, sT, cT]; // turret axis, and the two radial directions
+      const at = (q, d, m) => [q[0] + d[0] * m, q[1] + d[1] * m, q[2] + d[2] * m];
+      const proj = q => { const s = D / (D - q[2]); return [cx + q[0] * s, cy + q[1] * s, s]; };
+
+      // A tapered cylinder from q0 to q1, shaded across its width like brushed metal.
+      function tube(q0, q1, dir, r0, r1, shade, stroke) {
+        const A = proj(q0), B = proj(q1);
+        let dx = B[0] - A[0], dy = B[1] - A[1];
+        const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+        const nx = -dy, ny = dx, rot = Math.atan2(ny, nx), f = Math.max(.12, Math.abs(dir[2]));
+        const ra = r0 * A[2], rb = r1 * B[2];
+        g.beginPath();
+        g.moveTo(A[0] + nx * ra, A[1] + ny * ra);
+        g.lineTo(B[0] + nx * rb, B[1] + ny * rb);
+        g.ellipse(B[0], B[1], rb, rb * f, rot, 0, Math.PI, true);
+        g.lineTo(A[0] - nx * ra, A[1] - ny * ra);
+        g.ellipse(A[0], A[1], ra, ra * f, rot, Math.PI, 0, true);
+        g.closePath();
+        const gr = g.createLinearGradient(A[0] + nx * ra, A[1] + ny * ra, A[0] - nx * ra, A[1] - ny * ra);
+        gr.addColorStop(0, `rgba(${shade},.05)`); gr.addColorStop(.35, `rgba(${shade},.24)`); gr.addColorStop(1, `rgba(${shade},.04)`);
+        g.fillStyle = gr; g.fill();
+        if (stroke) { g.lineWidth = 1.5; g.strokeStyle = stroke; g.stroke(); }
+        return [A, B, dx, dy];
+      }
+
+      const objs = OBJ.map((o, i) => {
+        const th = turn - i * Math.PI / 2, c = Math.cos(th), s = Math.sin(th);
+        const radial = [v[0] * c + u[0] * s, v[1] * c + u[1] * s, v[2] * c + u[2] * s];
+        const dir = [a[0] * cT + radial[0] * sT, a[1] * cT + radial[1] * sT, a[2] * cT + radial[2] * sT];
+        return { o, c, dir, base: at(at([0, 0, 0], a, k * .05), radial, k * .17) };
+      }).sort((x, y) => x.c - y.c);
+
+      // light from the illuminator rising into whichever objective is in place
+      const front = objs[objs.length - 1];
+      if (front.c > .98 && settled > 0) {
+        const tip = proj(at(front.base, front.dir, k * front.o.len)), w = k * .05 * tip[2];
+        const gr = g.createLinearGradient(0, tip[1], 0, H);
+        gr.addColorStop(0, `rgba(255,255,255,${.16 * settled})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.beginPath(); g.moveTo(tip[0] - w * .4, tip[1]); g.lineTo(tip[0] + w * .4, tip[1]);
+        g.lineTo(tip[0] + w * 2.2, H); g.lineTo(tip[0] - w * 2.2, H); g.closePath();
+        g.fillStyle = gr; g.fill();
+      }
+
+      for (const { o, c, dir, base } of objs) {
+        const L = k * o.len, R = k * .05, edge = `rgba(255,255,255,${.2 + .14 * Math.max(0, c)})`;
+        tube(base, at(base, dir, L * .12), dir, R * 1.15, R * 1.15, '255,255,255', edge);                  // threaded collar
+        const [A, , dx, dy] = tube(at(base, dir, L * .12), at(base, dir, L * .64), dir, R, R, '255,255,255', edge); // barrel
+        tube(at(base, dir, L * .48), at(base, dir, L * .56), dir, R * 1.01, R * 1.01, o.band, `rgba(${o.band},.5)`);    // color band
+        tube(at(base, dir, L * .64), at(base, dir, L * .9), dir, R * .95, R * .6, '255,255,255', edge);               // nose
+        const [, T] = tube(at(base, dir, L * .9), at(base, dir, L), dir, R * .5, R * .44, '255,255,255', edge);     // front lens
+        g.beginPath(); g.arc(T[0] - dy * R * .15 * T[2], T[1], R * .1 * T[2], 0, Math.PI * 2);
+        g.fillStyle = `rgba(255,255,255,${.25 + .35 * Math.max(0, c)})`; g.fill();
+        if (c > .2) { // engraved magnification, legible on the objectives facing the student
+          const m = proj(at(base, dir, L * .32));
+          g.save(); g.translate(m[0], m[1]); g.rotate(Math.atan2(dy, dx) - Math.PI / 2);
+          g.font = `700 ${Math.round(k * .038 * m[2])}px ${getComputedStyle(document.body).getPropertyValue('--f-ui')}`;
+          g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = `rgba(255,255,255,${.55 * c})`;
+          g.fillText(o.mag, 0, 0); g.restore();
+        }
+      }
+
+      // revolving turret, with knurled grip lines that travel as it turns, and the neck up to the body tube
+      const top = at([0, 0, 0], a, -k * .04), bot = at([0, 0, 0], a, k * .06);
+      tube(at(top, a, -k * .9), top, a, k * .12, k * .1, '255,255,255', 'rgba(255,255,255,.22)');
+      tube(top, bot, a, k * .26, k * .26, '255,255,255', 'rgba(255,255,255,.34)');
+      const capC = proj(top), capRot = Math.atan2(-(proj(bot)[0] - capC[0]), proj(bot)[1] - capC[1]);
+      g.beginPath(); g.ellipse(capC[0], capC[1], k * .26 * capC[2], k * .26 * capC[2] * sT, capRot, 0, Math.PI * 2);
+      g.fillStyle = 'rgba(255,255,255,.08)'; g.fill(); g.lineWidth = 1.5; g.strokeStyle = 'rgba(255,255,255,.3)'; g.stroke();
+      g.lineWidth = 2;
+      for (let j = 0; j < 48; j++) {
+        const ps = turn + j / 48 * Math.PI * 2, c = Math.cos(ps), s = Math.sin(ps);
+        if (c < .05) continue;
+        const rim = [v[0] * c + u[0] * s, v[1] * c + u[1] * s, v[2] * c + u[2] * s];
+        const p0 = proj(at(top, rim, k * .26)), p1 = proj(at(bot, rim, k * .26));
+        g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]);
+        g.strokeStyle = `rgba(255,255,255,${.22 * c})`; g.stroke();
+      }
+    }
+
     function draw() {
       g.clearRect(0, 0, W, H);
       const phase = $('stage').dataset.phase;
       const move = phase === 'move', light = phase === 'ready' || phase === 'done';
-      const cyto = light ? 'rgba(200,70,130,.16)' : move ? 'rgba(190,140,255,.16)' : 'rgba(255,160,205,.17)';
-      const edge = light ? 'rgba(160,40,100,.22)' : 'rgba(255,255,255,.14)';
-      const nuc = light ? 'rgba(80,30,140,.28)' : move ? 'rgba(255,255,255,.18)' : 'rgba(70,20,110,.45)';
-      const speed = move ? 3.2 : 1;
+      const now = performance.now();
+      if (move && !wasMove) moveT0 = now;
+      wasMove = move;
+      const cyto = light ? 'rgba(200,70,130,.16)' : move ? 'rgba(190,140,255,.08)' : 'rgba(255,160,205,.17)';
+      const edge = light ? 'rgba(160,40,100,.22)' : move ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.14)';
+      const nuc = light ? 'rgba(80,30,140,.28)' : move ? 'rgba(255,255,255,.09)' : 'rgba(70,20,110,.45)';
+      const speed = move ? 1.6 : 1;
       for (const c of cells) {
         if (!reduce) {
           c.x += c.vx * speed; c.y += c.vy * speed; c.rot += c.vr * speed;
@@ -1009,14 +1101,16 @@ body.present.ui-off { cursor: none; }
         blob(c); g.fillStyle = cyto; g.fill(); g.lineWidth = 1.5; g.strokeStyle = edge; g.stroke();
         g.beginPath(); g.ellipse(c.x + c.nx, c.y + c.ny, c.nr, c.nr * .82, c.rot, 0, Math.PI * 2); g.fillStyle = nuc; g.fill();
       }
+      if (move) nosepiece(now);
     }
     function loop() { draw(); raf = requestAnimationFrame(loop); }
+    let still = 0; // reduced motion: no animation, but redraw so the scene follows the phase
     function reset() {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(raf); clearInterval(still);
       resize();
       if (S.skin !== 'histology') { g.clearRect(0, 0, W, H); return; }
       seed();
-      if (reduce) draw(); else loop();
+      if (reduce) { draw(); still = setInterval(draw, 500); } else loop();
     }
     window.addEventListener('resize', () => { if (S.skin === 'histology') { resize(); seed(); if (reduce) draw(); } else resize(); });
     return { reset, resize: () => setTimeout(() => { resize(); if (S.skin === 'histology') { seed(); if (reduce) draw(); } }, 60) };
